@@ -1,0 +1,23 @@
+services:
+  om3:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    ports:
+      - 3000:3000
+      - 3001:3001
+  om3_db:
+    build: 
+      context: ./
+      dockerfile: DB_Dockerfile
+    ports:
+      - 6432:5432
+    volumes:
+        - data_volume:/var/lib/postgresql/data/pgdata
+volumes:
+  data_volume:
+    driver: local
+    driver_opts:
+      type: none
+      device: /Users/chun/project/jsproject/om3/responsive_linechart_srv/om3-server/data
+      o: bind    

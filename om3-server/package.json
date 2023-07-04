@@ -1,0 +1,29 @@
+{
+  "name": "express-test",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node ./bin/www "
+  },
+  "dependencies": {
+    "@influxdata/influxdb-client": "^1.26.0",
+    "add-time": "^1.0.0",
+    "body-parser": "^1.19.2",
+    "cookie-parser": "~1.4.4",
+    "cors": "^2.8.5",
+    "csvtojson": "^2.0.10",
+    "debug": "~2.6.9",
+    "express": "~4.16.1",
+    "gaussian": "^1.2.0",
+    "http-errors": "~1.6.3",
+    "influxdb-nodejs": "^3.1.0",
+    "jade": "~1.11.0",
+    "jsonpack": "^1.1.5",
+    "morgan": "~1.9.1",
+    "papaparse": "^5.3.2",
+    "pg": "^8.7.1",
+    "pg-cursor": "^2.7.3",
+    "readline": "^1.3.0",
+    "ws": "^8.8.1"
+  }
+}
