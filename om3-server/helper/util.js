@@ -77,6 +77,18 @@ function generateOM3TableName(rawName, maxT, className) {
     }
 }
 
+function generateOM3TempTableName(rawName, className) {
+    let tempName = rawName;
+    if (rawName.includes(".")) {
+        tempName = tempName.split(".")[1];
+    }
+    if (className) {
+        return `om3_multi.${className}_${tempName}_om3_${"temp"}`
+    } else {
+        return `om3.${tempName}_om3_${"temp"}`
+    }
+}
+
 function computeLevelFromT(t) {
     return Math.ceil(Math.log2(t))
 }
@@ -108,7 +120,7 @@ function getPool() {
     } else {
         const dbConfig = JSON.parse(fs.readFileSync("./initdb/dbconfig.json").toString());
         console.log(dbConfig)
-        if (!dbConfig['username'] || !dbConfig['hostname'] || !dbConfig['password'] || !dbConfig['db']) {
+        if (!dbConfig['username'] || !dbConfig['hostname'] || !dbConfig['password'] || !dbConfig['db']||!dbConfig['port']) {
             throw new Error("db config error");
         }
         return pool = new Pool({
@@ -116,6 +128,7 @@ function getPool() {
             host: dbConfig["hostname"],
             database: dbConfig['db'],
             password: dbConfig['password'],
+            port:dbConfig['port']
         });
         
     }
@@ -123,4 +136,4 @@ function getPool() {
 
 
 
-module.exports = { getTableLevel, generateOM3TableName, customDBPoolMap, computeLevelFromT ,getPool}
+module.exports = {generateOM3TempTableName, getTableLevel, generateOM3TableName, customDBPoolMap, computeLevelFromT ,getPool}

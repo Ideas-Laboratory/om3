@@ -69,7 +69,7 @@ const loadViewChangeQueryWSMinMaxMissDataInitData: ActionHandler<GlobalState, Gl
     }
 
     if (lineInfo === undefined) {
-        throw new Error("cannot get class info");
+        throw new Error("cannot get class info"+currentTable);
     }
     maxLevel = lineInfo['level'];
     const startTimeStamp = new Date(lineInfo.start_time).getTime();
@@ -273,21 +273,23 @@ const getAllMultiLineClassInfo: ActionHandler<GlobalState, GlobalState> = (conte
 }
 
 
-const testCustomDBConn: ActionHandler<GlobalState, GlobalState> = (context: ActionContext<GlobalState, GlobalState>, payload: { hostName: string, possword: string, dbName: string, userName: string }) => {
+const testCustomDBConn: ActionHandler<GlobalState, GlobalState> = (context: ActionContext<GlobalState, GlobalState>, payload: { hostName: string, possword: string, dbName: string, userName: string ,dbPort:number}) => {
     return axios.post("postgres/line_chart/testDBConnection", {
         host_name: payload.hostName,
         user_name: payload.userName,
         password: payload.possword,
         db_name: payload.dbName,
+        port:payload.dbPort
     })
 }
 
-const createCustomDBConn: ActionHandler<GlobalState, GlobalState> = (context: ActionContext<GlobalState, GlobalState>, payload: { hostName: string, possword: string, dbName: string, userName: string }) => {
+const createCustomDBConn: ActionHandler<GlobalState, GlobalState> = (context: ActionContext<GlobalState, GlobalState>, payload: { hostName: string, possword: string, dbName: string, userName: string ,dbPort:number}) => {
     return axios.post("postgres/line_chart/createCustomDBConn", {
         host_name: payload.hostName,
         user_name: payload.userName,
         password: payload.possword,
         db_name: payload.dbName,
+        port:payload.dbPort
     })
 }
 const initOM3DB: ActionHandler<GlobalState, GlobalState> = (context: ActionContext<GlobalState, GlobalState>, payload: { hostName: string, possword: string, dbName: string, userName: string }) => {
@@ -303,7 +305,7 @@ const getAllCustomTables: ActionHandler<GlobalState, GlobalState> = (context: Ac
 }
 
 const performTransformForSingeLine: ActionHandler<GlobalState, GlobalState> = (context: ActionContext<GlobalState, GlobalState>, payload: { startTime: string, endTime: string, tableName: string }) => {
-    const combinedUrl = `/line_chart/performTransformForSingeLine?start_time=${payload.startTime}&end_time=${payload.endTime}&table_name=${payload.tableName}`;
+    const combinedUrl = `/line_chart/performTransformForSingeLine?start_time=${payload.startTime}&end_time=${payload.endTime}&table_name=${payload.tableName}&mode=${context.state.controlParams.currentMode}`;
     return get(context.state, combinedUrl);
 }
 const performTransformForMultiLine: ActionHandler<GlobalState, GlobalState> = (context: ActionContext<GlobalState, GlobalState>, payload: { startTime: string, endTime: string, tableNames: Array<string>, multiLineClassName: string }) => {

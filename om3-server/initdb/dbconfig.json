@@ -1,6 +1,7 @@
 {
-    "hostname":"db_hostname",
-    "db":"db",
-    "username":"db_username",
-    "password":"db_password"
+    "hostname":"127.0.0.1",
+    "db":"linesdata",
+    "username":"postgres",
+    "password":"om3dbpassword",
+    "port":6432
 }

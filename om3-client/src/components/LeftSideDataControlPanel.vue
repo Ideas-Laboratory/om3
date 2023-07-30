@@ -17,6 +17,7 @@
         <el-input v-model="customUserName" type="string" placeholder="User Name" />
         <el-input v-model="customDBPassword" type="password" placeholder="DB Password" />
         <el-input v-model="customDBName" type="string" placeholder="DB Name" />
+        <el-input v-model="customDBPort" type="number" placeholder="port" />
         <div><el-button class="btn mt-2" v-on:click="handleTestConn" type="primary">{{ testConnectResult }}</el-button>
         </div>
         <div><el-button class="btn mt-2 " v-on:click="createCustomDBConn" type="primary">{{ createDBConn }}</el-button>
@@ -181,6 +182,7 @@ export default defineComponent({
       customDBHostName: "",
       customDBPassword: '',
       customDBName: '',
+      customDBPort:5432,
       customUserName: "",
       isOpenDbSetup: false,
       isOpenTransform: false,
@@ -224,7 +226,7 @@ export default defineComponent({
       })
     },
     handleTestConn() {
-      store.dispatch("testCustomDBConn", { hostName: this.customDBHostName, possword: this.customDBPassword, dbName: this.customDBName, userName: this.customUserName }).then((res) => {
+      store.dispatch("testCustomDBConn", { hostName: this.customDBHostName, possword: this.customDBPassword, dbName: this.customDBName, userName: this.customUserName,dbPort:this.customDBPort }).then((res) => {
         const result = res.data['data']['result'];
         if (result === 'success') {
           this.storeDBConfig()
@@ -243,11 +245,13 @@ export default defineComponent({
       localStorage.setItem("customDBPassword", this.customDBPassword)
       localStorage.setItem("customDBName", this.customDBName)
       localStorage.setItem("customUserName", this.customUserName)
+      localStorage.setItem("customDBPort",this.customDBPort)
     },
     restoreDBConfig() {
       const customDBHostName = localStorage.getItem("customDBHostName")
       const customDBPassword = localStorage.getItem("customDBPassword");
       const customDBName = localStorage.getItem("customDBName");
+      const customDBPort=localStorage.getItem("customDBPort")
       const customUserName = localStorage.getItem("customUserName");
       if (customDBHostName) {
         this.customDBHostName = customDBHostName;
@@ -261,9 +265,12 @@ export default defineComponent({
       if (customUserName) {
         this.customUserName = customUserName;
       }
+      if(customDBPort){
+        this.customDBPort=customDBPort
+      }
     },
     createCustomDBConn() {
-      store.dispatch("createCustomDBConn", { hostName: this.customDBHostName, possword: this.customDBPassword, dbName: this.customDBName, userName: this.customUserName }).then((res) => {
+      store.dispatch("createCustomDBConn", { hostName: this.customDBHostName, possword: this.customDBPassword, dbName: this.customDBName, userName: this.customUserName,dbPort:this.customDBPort }).then((res) => {
         const result = res.data['data']['result'];
         if (result === 'success') {
           this.updateDBCreateConn("Create Success")

@@ -1551,7 +1551,7 @@ export default class LevelDataManager {
             }
             //this.checkMonotonicity(nonUniformColObjs,preColIndex,tempNeedLoadDifNodes);
             needLoadDifNode = tempNeedLoadDifNodes;
-            if (needLoadDifNode.length > 0 && needLoadDifNode[0].level === this.maxLevel - 1) {
+            if (needLoadDifNode.length > 0 && needLoadDifNode[0].level === this.maxLevel - 2) {
                 //console.log("last level:",needLoadDifNode.length);
                 for (let i = 0; i < needLoadDifNode.length; i++) {
 
@@ -1606,7 +1606,7 @@ export default class LevelDataManager {
         const dataName = this.dataName.includes(".") ? this.dataName.split(".")[1] : this.dataName;
         const currentFlagInfo = store.state.allFlags[this.dataName];
         if (currentFlagInfo === undefined) {
-            throw new Error(this.dataName + "get flag faild")
+            throw new Error(this.dataName + "get flagx faild")
         } else {
             console.log("flag length:", currentFlagInfo.length)
         }
@@ -1949,7 +1949,7 @@ export default class LevelDataManager {
             }
             needLoadDifNode = tempNeedLoadDifNodes;
 
-            if (needLoadDifNode.length > 0 && needLoadDifNode[0].level === this.maxLevel - 1) {
+            if (needLoadDifNode.length > 0 && needLoadDifNode[0].level === this.maxLevel - 2) {
 
                 for (let i = 0; i < needLoadDifNode.length; i++) {
 

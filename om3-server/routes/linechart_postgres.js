@@ -4,9 +4,11 @@ const fs = require("fs")
 
 const { Pool } = require('pg');
 const { generateSingalLevelSQLWithSubQueryMinMaxMiss, generateSingalLevelSQLMinMaxMissQuery, generateSingalLevelSQLWithSubQuery } = require('../helper/generate_sql');
-const { getTableLevel, generateOM3TableName, customDBPoolMap, computeLevelFromT, getPool } = require('../helper/util');
+const { generateOM3TempTableName, getTableLevel, generateOM3TableName, customDBPoolMap, computeLevelFromT, getPool } = require('../helper/util');
 const { randomUUID } = require('crypto');
 const { nonuniformMinMaxEncode } = require('../compute/om_compute');
+const { default: axios } = require('axios');
+const { config } = require('process');
 
 const stockTableMap = [];
 const mockTableMap = [];
@@ -30,7 +32,11 @@ function init() {
     //console.log(stockTableMap);
 }
 
-
+const isDocker = process.env.DOCKER_ENV
+let remoteHost="127.0.0.1"
+if (isDocker !== undefined && isDocker.length > 0){
+    remoteHost="om3_encoder"
+}
 
 const pool = getPool()
 const levelMap = {
@@ -587,7 +593,7 @@ function getAllMulitLineClassInfo(req, res) {
 
 function getAllFlagNames(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    const lineType=req.query['line_type'];
+    const lineType = req.query['line_type'];
     let filePath = "./flags/";
     if (lineType === 'Single') {
         filePath = filePath + "single_line";
@@ -603,18 +609,30 @@ async function testDBConnection(req, res) {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
     res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
     res.setHeader('Access-Control-Allow-Credentials', true);
-    const query = { host_name: req.body.host_name, password: req.body.password, db_name: req.body.db_name, user_name: req.body.user_name };
-    console.log("cookie:", req.headers['authorization'])
+    const query = { host_name: req.body.host_name, password: req.body.password, db_name: req.body.db_name, user_name: req.body.user_name, port: req.body.port };
+    //console.log("cookie:", req.headers['authorization'])
+    const cookie = req.headers['authorization']
+    let port = query.port
+    if (!query.port) {
+        port = 5432
+    }
     const testPool = new Pool({
         user: query.user_name,
         host: query.host_name,
         database: query.db_name,
         password: query.password,
+        port: port
     });
 
     try {
         const testRes = await testPool.query("select 1 as num");
-        if (testRes.rowCount > 0) {
+        const headers = {
+            "authorization": cookie
+        }
+        const remoteEncoderResp = await axios.get(`http://${remoteHost}:3330/testDBConnection?host_name=${query.host_name}&password=${query.password}&db_name=${query.db_name}&user_name=${query.user_name}&port=${port}`, {
+            headers: headers,
+        })
+        if (testRes.rowCount > 0 && remoteEncoderResp.data['code'] == 200) {
             res.send({ code: 200, msg: "success", data: { result: "success" } })
         } else {
             res.send({ code: 200, msg: err, data: { result: "fail" } })
@@ -630,26 +648,42 @@ async function testDBConnection(req, res) {
 
 }
 
-function createCustomDBConn(req, res) {
+async function createCustomDBConn(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
     res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
     res.setHeader('Access-Control-Allow-Credentials', true);
 
-    const query = { host_name: req.body.host_name, password: req.body.password, db_name: req.body.db_name, user_name: req.body.user_name };
+    const query = { host_name: req.body.host_name, password: req.body.password, db_name: req.body.db_name, user_name: req.body.user_name, port: req.body.port };
     const userCookie = req.headers['authorization'];
     console.log("create conn:", userCookie)
+    let port = query.port
+    if (!query.port) {
+        port = 5432
+    }
     const testPool = new Pool({
         user: query.user_name,
         host: query.host_name,
         database: query.db_name,
         password: query.password,
+        port:port
     });
     if (customDBPoolMap().has(userCookie)) {
         customDBPoolMap().get(userCookie).end();
     }
     customDBPoolMap().set(userCookie, testPool);
-    res.send({ code: 200, msg: "success", data: { result: "success" } })
+    const headers = {
+        "authorization": userCookie
+    }
+    const remoteEncoderResp = await axios.get(`http://${remoteHost}:3330/createCustomDBConn?host_name=${query.host_name}&password=${query.password}&db_name=${query.db_name}&user_name=${query.user_name}&port=${port}`, {
+        headers: headers,
+    })
+    if (remoteEncoderResp.data['code'] === 200) {
+        res.send({ code: 200, msg: "success", data: { result: "success" } })
+        return
+    }
+    res.send({ code: 400, msg: remoteEncoderResp.data['msg'], data: { result: remoteEncoderResp.data['msg'] } })
+    return
 }
 
 function initOM3DBEnv(req, res) {
@@ -663,16 +697,17 @@ function initOM3DBEnv(req, res) {
         return
     }
     const tempPool = customDBPoolMap().get(userCookie);
-    const createSchemaSql = `create schema IF NOT EXISTS om3;create schema om3_multi;create schema IF NOT EXISTS raw_data;create schema IF NOT EXISTS raw_data_multi;create schema IF NOT EXISTS om3_setting;`
+    const createSchemaSql = `create schema IF NOT EXISTS om3;create schema IF NOT EXISTS om3_multi;create schema IF NOT EXISTS raw_data;create schema IF NOT EXISTS raw_data_multi;create schema IF NOT EXISTS om3_setting;`
     const createClassTableSql = `create table IF NOT EXISTS om3_setting.multi_line_class_info(name character varying primary key,level integer not null,amount integer not null,max_len integer,start_time timestamp not null,end_time timestamp,interval integer);`
     const createSingleInfoSql = `create table IF NOT EXISTS om3_setting.single_line_info(name character varying primary key,max_len integer not null,level integer not null,start_time timestamp not null,end_time timestamp,interval integer);`
     try {
         tempPool.query(createSchemaSql + createClassTableSql + createSingleInfoSql, (err, resu) => {
             if (err) {
                 res.send({ code: 400, msg: err, data: { result: "fail" } })
+                return
             }
             res.send({ code: 200, msg: 'success', data: { result: "success" } })
-
+            return
         })
     } catch (err) {
         console.log(err)
@@ -726,7 +761,7 @@ function getAllCustomTables(req, res) {
                 res.send({ code: 400, msg: err, data: {} })
                 return
             }
-            res.send({ code: 200, msg: "success", data: { result: result.rows.map(v => v['table_fullname']).filter((v => v.includes("om3"))) } })
+            res.send({ code: 200, msg: "success", data: { result: result.rows.map(v => v['table_fullname']).filter(v => !v.includes("om3.")).filter(v=>!v.includes("om3_multi.")) } })
         });
 
     } catch (err) {
@@ -764,6 +799,10 @@ async function performTransformForSingeLine(req, res) {
         if (maxT === undefined || maxT <= 0) {
             throw new Error("origin table t illegal")
         }
+        let infoName=query.tableName;
+        if(infoName.includes(".")){
+            infoName=infoName.split(".")[1];
+        }
         const newTableName = generateOM3TableName(query.tableName, maxT);
         const createOm3TableSql = `DROP TABLE IF EXISTS ${newTableName};create table ${newTableName}(i integer primary key,minvd double precision,maxvd double precision)`;
         await new Promise((resolve, reject) => {
@@ -779,12 +818,60 @@ async function performTransformForSingeLine(req, res) {
         }).catch((err) => {
             throw err
         })
-        const computeRes = await nonuniformMinMaxEncode(tempPool, query.tableName, newTableName, query.mode === undefined ? "Custom" : query.mode)
-        const createInfoSql = `insert into om3_setting.single_line_info(name,max_len,level,start_time,end_time,interval) values('${computeRes.name}',${computeRes.maxLen},${computeRes.maxLevel},'${query.startTime}','${query.endTime}',${0}) ON CONFLICT (name) DO UPDATE SET max_len=EXCLUDED.max_len,level=EXCLUDED.level,start_time=EXCLUDED.start_time,end_time=EXCLUDED.end_time,interval=EXCLUDED.interval;`;
+        const maxL = Math.ceil(Math.log2(maxT));
+        const om3TempTableName = generateOM3TempTableName(query.tableName)
+        console.log(maxL)
+        console.log(maxT)
+        if (maxT > 2 ** 22) {
+            const createOm3TempTableSql = `DROP TABLE IF EXISTS ${om3TempTableName};create table ${om3TempTableName}(l integer,i integer,minv double precision,maxv double precision, primary key(l,i))`;
+            await new Promise((resolve, reject) => {
+                tempPool.query(createOm3TempTableSql, (err, result) => {
+                    if (err) {
+                        console.log(createOm3TempTableSql);
+                        reject(err)
+                        return
+                    }
+                    resolve()
+
+                })
+            }).catch((err) => {
+                throw err
+            })
+            console.log("temp table create finish")
+            const headers = {
+                "authorization": userCookie
+            }
+            console.log(maxT,query.mode)
+            const remoteEncoderResp = await axios.get(`http://${remoteHost}:3330/om3_encode?raw_table_name=${query.tableName}&temp_table_name=${om3TempTableName}&target_table_name=${newTableName}&max_level=${maxL}&mode=${query.mode}`, {
+                headers: headers,
+            })
+            console.log('00000')
+            if(remoteEncoderResp.data['code']!==200){
+                res.send({ code: 500, msg: remoteEncoderResp.data['msg'] })
+                return
+            }
+        } else {
+            const computeRes = await nonuniformMinMaxEncode(tempPool, query.tableName, newTableName, query.mode === undefined ? "Custom" : query.mode)
+        }
+        infoName=newTableName.split(".")[1]
+        const createInfoSql = `insert into om3_setting.single_line_info(name,max_len,level,start_time,end_time,interval) values('${infoName}',${maxT},${maxL},'${query.startTime}','${query.endTime}',${0}) ON CONFLICT (name) DO UPDATE SET max_len=EXCLUDED.max_len,level=EXCLUDED.level,start_time=EXCLUDED.start_time,end_time=EXCLUDED.end_time,interval=EXCLUDED.interval;`;
         await new Promise((resolve, reject) => {
             tempPool.query(createInfoSql, (err, result) => {
                 if (err) {
                     console.log(createInfoSql)
+                    reject(err)
+                    return
+                }
+                resolve()
+            })
+        }).catch((err) => {
+            throw err
+        })
+        const deleteTempTableSql=`drop table ${om3TempTableName}`;
+        await new Promise((resolve, reject) => {
+            tempPool.query(deleteTempTableSql, (err, result) => {
+                if (err) {
+                    console.log(deleteTempTableSql)
                     reject(err)
                     return
                 }

@@ -6,6 +6,16 @@ services:
     ports:
       - 3000:3000
       - 3001:3001
+    volumes:
+      - ./flags:/app/flags
+  om3_encoder:
+    build: 
+      context: ./encoder
+      dockerfile: Dockerfile
+    ports:
+      - 3330:3330
+    volumes:
+      - ./flags/single_line:/app/flags
   om3_db:
     build: 
       context: ./

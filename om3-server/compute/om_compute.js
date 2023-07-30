@@ -185,7 +185,7 @@ async function nonuniformMinMaxEncode(pool,rawTableName,om3TableName,mode) {
         //pool.end()
     }
     return {
-        maxLevel:maxL,
+    maxLevel:maxL,
         maxLen:lastItem['t'],
         name:name,
     }
